@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2
+
+**New**
+
+- Settings tab. App Launcher now has a Settings tab next to Apps and Agents.
+- Find other apps. Settings > Find other apps has an **Open jsystems.app** button that opens jsystems.app in your browser, where you can find more JSystems apps.
+
 ## 0.3.1
 
 **Improved**

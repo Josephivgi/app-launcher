@@ -1,6 +1,7 @@
 import { esc, icon, toast, errorText } from "./util.js";
 import { renderApps, onAppsChanged } from "./apps.js";
 import { renderAgents, onAgentsChanged } from "./agents.js";
+import { renderSettings } from "./settings.js";
 
 const shell = window.shell;
 const root = document.getElementById("app");
@@ -54,7 +55,7 @@ function renderTop() {
   if (!top) return;
   top.innerHTML =
     '<div class="wordmark">App Launcher</div>' +
-    '<nav class="tabs" role="tablist" aria-label="Sections">' + tab("apps", "Apps") + tab("agents", "Agents") + "</nav>" +
+    '<nav class="tabs" role="tablist" aria-label="Sections">' + tab("apps", "Apps") + tab("agents", "Agents") + tab("settings", "Settings") + "</nav>" +
     '<div class="updates" data-updates>' + updatesMarkup() + "</div>" +
     '<div class="seg look" role="group" aria-label="Look"><button data-theme-pick="light" class="' + (state.theme === "light" ? "on" : "") + '">Light</button><button data-theme-pick="dark" class="' + (state.theme === "dark" ? "on" : "") + '">Dark</button></div>';
 }
@@ -71,6 +72,7 @@ function renderMain() {
   mainCleanup = null;
   const ctx = { state, navigate, shell };
   if (state.page === "agents") mainCleanup = renderAgents(main, ctx);
+  else if (state.page === "settings") mainCleanup = renderSettings(main, ctx);
   else mainCleanup = renderApps(main, ctx);
 }
 

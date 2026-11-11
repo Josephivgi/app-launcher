@@ -305,7 +305,7 @@ function registerIpc() {
     return res.canceled ? "" : res.filePaths[0];
   });
   handle("open-external", async (url) => {
-    if (!/^https:\/\/github\.com\//i.test(String(url))) throw new Error("Only github.com links open from here.");
+    if (!/^https:\/\/(github\.com\/|jsystems\.app(\/|$))/i.test(String(url))) throw new Error("Only github.com and jsystems.app links open from here.");
     await shell.openExternal(String(url));
     return true;
   });

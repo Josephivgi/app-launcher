@@ -302,6 +302,11 @@ async function runSmoke(ctx) {
       const agentsText = await js("document.body.innerText");
       expect(/Claude Code/.test(agentsText), "agents page missing: " + agentsText.slice(0, 200));
       if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-agents.png"), (await win.webContents.capturePage()).toPNG());
+      await js('document.querySelector("[data-nav=settings]").click()');
+      await wait(300);
+      const settingsText = await js("document.body.innerText");
+      expect(/Find other apps/.test(settingsText) && /Open jsystems\.app/.test(settingsText), "settings page missing: " + settingsText.slice(0, 200));
+      if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-settings.png"), (await win.webContents.capturePage()).toPNG());
       return "exe icons in " + iconMs + " ms; " + cards.map((c) => c.id + (c.img ? " (icon " + c.img + "px)" : "")).join(", ");
     } finally {
       win.destroy();

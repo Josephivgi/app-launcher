@@ -132,6 +132,7 @@ label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 .agent-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 16px; }
 .agent-main { min-width: 0; }
 .pad { padding: 14px 16px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .cmd { margin: 8px 0 0; padding: 10px 12px; border-radius: var(--radius); background: var(--well); font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; }
 .agent-row h3 { font-size: 14px; display: flex; gap: 8px; align-items: center; }
 .agent-row code { color: var(--muted); word-break: break-all; }
