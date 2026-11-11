@@ -43,3 +43,7 @@ npm run dist       # build dist/App-Launcher-Setup-<version>.exe
 Releases: add a `## <version>` section to `CHANGELOG.md`, set the same version in `package.json`, commit, and push a tag such as `v0.2.0`. The release workflow (`.github/workflows/release.yml`) runs the tests, builds the installer, and publishes it with the changelog section as the notes.
 
 Security reports: see [SECURITY.md](SECURITY.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
