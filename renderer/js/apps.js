@@ -47,15 +47,13 @@ function cardLines(app) {
     return { sub: esc(host(app.launch.url)), problem: app.exeExists ? "" : "Browser not found" };
   }
   if (app.kind === "command") {
-    const problem = !app.exeExists ? "Folder not found" : app.trusted ? "" : "Needs your approval";
+    const problem = app.exeExists ? "" : "Folder not found";
     return { sub: '<code>' + esc(app.launch.command.split(/\r?\n/)[0]) + "</code>", problem };
   }
   const c = app.check || {};
   if (!app.exeExists) return { sub: "", problem: "Program not found" };
   if (view.checking.has(app.id)) return { sub: "Checking…", problem: "" };
   const sub = c.installed ? "v" + esc(c.installed) : "";
-  // An agent-added program asks once, on its first launch.
-  if (!app.trusted) return { sub, problem: "Needs your approval" };
   return { sub, problem: STATUS[c.status || "unchecked"] || "" };
 }
 

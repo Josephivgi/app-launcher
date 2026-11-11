@@ -82,7 +82,12 @@ label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; background: var(--well); border-radius: var(--radius); }
 .seg button { height: 28px; border-radius: 6px; font-size: 13px; color: var(--muted); }
 .seg button.on { background: var(--surface); color: var(--ink); font-weight: 500; box-shadow: 0 1px 2px oklch(0.2 0.02 270 / 0.12); }
-.topbar .look { margin-left: auto; width: 150px; }
+.topbar .look { margin-left: auto; width: 150px; flex: none; }
+.updates { margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.updates + .look { margin-left: 0; }
+.upd-text { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.upd-problem { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--danger); white-space: nowrap; }
+.upd-problem svg { width: 13px; height: 13px; }
 .main { min-width: 0; min-height: 0; flex: 1; display: flex; flex-direction: column; }
 
 .page { flex: 1; min-height: 0; overflow-y: auto; }

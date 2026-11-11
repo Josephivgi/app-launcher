@@ -10,6 +10,7 @@ const { APP_TOOLS, callAppTool } = require("../lib/app-tools");
 const { listAgents, setConnected, syncAgents } = require("../lib/agent-connect");
 const { startBridge } = require("./bridge.cjs");
 const { iconFile } = require("../lib/icons");
+const { createSelfUpdate } = require("../lib/self-update");
 
 const APP_ROOT = path.join(__dirname, "..");
 const RENDERER = path.join(APP_ROOT, "renderer");
@@ -35,6 +36,7 @@ if (!app.requestSingleInstanceLock()) {
 
 let db = null;
 let apps = null;
+let selfUpdate = null;
 let bridge = null;
 let mainWindow = null;
 
@@ -262,12 +264,12 @@ function registerIpc() {
     return res.canceled ? "" : res.filePaths[0];
   });
   handle("apps-add", async (body) => {
-    const added = await apps.add(body, { by: "user" });
+    const added = await apps.add(body);
     broadcast("apps-changed");
     return added;
   });
   handle("apps-update", async (body) => {
-    const updated = await apps.update(body, { by: "user" });
+    const updated = await apps.update(body);
     broadcast("apps-changed");
     return updated;
   });
@@ -284,8 +286,11 @@ function registerIpc() {
     broadcast("apps-changed");
     return result;
   });
-  handle("apps-launch", (id) => apps.launch(String(id), { by: "user" }));
+  handle("apps-launch", (id) => apps.launch(String(id)));
   handle("apps-install-update", (id) => apps.installUpdate(String(id)));
+  handle("self-update-state", () => selfUpdate.get());
+  handle("self-update-check", () => selfUpdate.check());
+  handle("self-update-install", () => selfUpdate.install());
   handle("apps-pick-exe", async () => {
     const res = await dialog.showOpenDialog(mainWindow, { title: "Choose the program to launch", properties: ["openFile"], filters: [{ name: "Programs", extensions: ["exe", "bat", "cmd", "lnk"] }] });
     return res.canceled ? "" : res.filePaths[0];
@@ -317,14 +322,13 @@ app.whenReady().then(async () => {
     openPath: (p) => shell.openPath(p),
     openExternal: (url) => shell.openExternal(url),
     confirmInstall: (message, detail, okLabel) => confirm(message, detail, okLabel),
-    // An agent added this, so the person decides before it first runs.
-    confirmLaunch: (app) => {
-      const detail =
-        app.kind === "command"
-          ? "This command was added by an agent and has not run before:\n\n" + app.launch.command + "\n\nFolder: " + (app.launch.cwd || "your home folder")
-          : "This program was added by an agent and has not run before:\n\n" + app.launch.exe + (app.launch.args && app.launch.args.length ? "\nArguments: " + app.launch.args.join(" ") : "");
-      return confirm("Run " + app.name + "?", detail, "Run and remember");
-    },
+  });
+  selfUpdate = createSelfUpdate({
+    currentVersion: app.getVersion(),
+    packaged: app.isPackaged,
+    dataRoot: DATA_ROOT,
+    quit: () => app.quit(),
+    onChange: (state) => broadcast("self-update", state),
   });
   apps.seed();
   registerProtocols();
@@ -347,6 +351,8 @@ app.whenReady().then(async () => {
     syncConnections();
   });
   apps.checkAll().then(() => broadcast("apps-changed")).catch(() => {});
+  // App Launcher's own updates: now, then every hour.
+  selfUpdate.start();
   app.on("activate", () => {
     if (!BrowserWindow.getAllWindows().length) createWindow();
   });

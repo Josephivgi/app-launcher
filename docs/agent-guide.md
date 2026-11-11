@@ -43,14 +43,6 @@ Example: `{"name":"Blog dev server","command":"npm run dev","cwd":"C:\\Users\\me
 
 Use a command when the thing to open is a command line. Use an app when it is a single program file.
 
-## Approval
-
-A program or command you add does not run until the person approves it. `app_add` and `app_update` record it as not approved, and `app_launch` returns an error until they click Run or Launch on it once in App Launcher. `app_list` shows `approved` for each app.
-
-Changing what an app runs (its `exe`, `args`, `cwd`, `command` or `shell`) or its `repo` drops the approval again. Websites open without approval.
-
-Do not ask the person to approve by pasting text or editing files. Tell them the app is waiting and that they can click Run in App Launcher.
-
 ## Installing updates
 
 App Launcher can download a newer release from the app's GitHub repo and open its Windows installer, but only when the person clicks **Update to** on the card and confirms. The `app_list` entry shows `installer` (the file name) when a release has one. You cannot install updates yourself.

@@ -108,18 +108,8 @@ async function runSmoke(ctx) {
     ]);
     const r2 = out.find((m) => m.id === 2);
     expect(r2 && r2.result && !r2.result.isError, JSON.stringify(out).slice(0, 400));
-    // An agent-added command must not run until the person approves it.
     const r3 = out.find((m) => m.id === 3);
-    expect(r3 && r3.result && r3.result.isError && /not been approved/.test(r3.result.content[0].text), "agent launch was not refused: " + JSON.stringify(out).slice(0, 400));
-    expect(!fs.existsSync(marker), "unapproved command ran");
-    // Stands in for the person clicking Run and remember in the window.
-    apps.approve("smoke-cmd");
-    const again = await mcpCall(dataRoot, appRoot, [
-      { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
-      { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "app_launch", arguments: { id: "smoke-cmd" } } },
-    ]);
-    const r4 = again.find((m) => m.id === 2);
-    expect(r4 && r4.result && !r4.result.isError, "approved launch failed: " + JSON.stringify(again).slice(0, 400));
+    expect(r3 && r3.result && !r3.result.isError, "agent launch failed: " + JSON.stringify(out).slice(0, 400));
     for (let i = 0; i < 40 && !fs.existsSync(marker); i++) await new Promise((r) => setTimeout(r, 250));
     expect(fs.existsSync(marker), "command did not run");
     const stored = apps.get("smoke-cmd");
@@ -238,8 +228,7 @@ async function runSmoke(ctx) {
       fs.mkdirSync(work, { recursive: true });
       const marker = path.join(work, "clicked.txt");
       await apps.add({ name: "JSystems", description: "Product site", url: "https://jsystems.app" });
-      // Added as the person in the window, so no approval prompt blocks the click.
-      await apps.add({ name: "Click Cmd", command: "echo clicked> clicked.txt", cwd: work, terminal: false, icon: "data:image/png;base64," + PNG }, { by: "user" });
+      await apps.add({ name: "Click Cmd", command: "echo clicked> clicked.txt", cwd: work, terminal: false, icon: "data:image/png;base64," + PNG });
       await win.loadURL(shellUrl);
       // Exe icons load in the background and the grid repaints when each one lands.
       // Poll until every exe app card has its icon, and report how long that took.
@@ -276,6 +265,18 @@ async function runSmoke(ctx) {
       await wait(300);
       const form = await js('(() => { const f = document.querySelector("[data-form]"); return { kind: f.elements.kind.value, cmdShown: !f.elements.command.closest("label").hidden, exeHidden: f.elements.exe.closest("label").hidden, icon: !!f.elements.icon, title: f.querySelector("h2").textContent }; })()');
       expect(form.kind === "command" && form.cmdShown && form.exeHidden && form.icon && form.title === "Add a command", "command form wrong: " + JSON.stringify(form));
+      // App Launcher's own update check: Check now in the top bar asks the real
+      // GitHub releases and shows the answer.
+      const before = await js('(document.querySelector("[data-updates]") || {}).textContent || ""');
+      await js('document.querySelector("[data-upd=check]").click()');
+      let after = "";
+      for (let i = 0; i < 60; i++) {
+        await wait(250);
+        after = await js('document.querySelector("[data-updates]").textContent');
+        if (/up to date|is available|is out|failed/.test(after)) break;
+      }
+      expect(/up to date|is available|is out/.test(after), "Check now did not show a result: before \"" + before + "\" after \"" + after + "\"");
+      if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-updates.png"), (await win.webContents.capturePage()).toPNG());
       if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-command-form.png"), (await win.webContents.capturePage()).toPNG());
       await js('document.querySelector("[data-act=cancel]").click()');
       apps.remove("jsystems");

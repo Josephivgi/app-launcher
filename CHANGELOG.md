@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+**New**
+
+- App Launcher updates itself. The top bar shows your version and whether a newer one is out on GitHub. It checks when it opens and every hour, and **Check now** checks right away. **Update now** downloads the new setup, checks it against GitHub's SHA-256 checksum, installs it and restarts App Launcher.
+
+**Improved**
+
+- No more approval prompts. Programs and commands an agent adds run the first time you click them, and agents can launch them too.
+
 ## 0.2.0
 
 **New**

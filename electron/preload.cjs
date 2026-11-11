@@ -20,6 +20,11 @@ contextBridge.exposeInMainWorld("shell", {
     pickIcon: invoke("apps-pick-icon"),
     pickFolder: invoke("apps-pick-folder"),
   },
+  selfUpdate: {
+    state: invoke("self-update-state"),
+    check: invoke("self-update-check"),
+    install: invoke("self-update-install"),
+  },
   agents: {
     list: invoke("agents-list"),
     connect: invoke("agents-connect"),

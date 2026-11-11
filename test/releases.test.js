@@ -2,9 +2,16 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { pickInstaller, assertGithubUrl, safeName } = require("../lib/releases");
+const { pickInstaller, assertGithubUrl, assertReleaseUrl, safeName } = require("../lib/releases");
 
 const SHA = "a".repeat(64);
+
+test("assertReleaseUrl accepts only the same repo's release downloads", () => {
+  const ok = "https://github.com/Owner/Repo/releases/download/v1.0.0/Setup.exe";
+  assert.equal(assertReleaseUrl(ok, "owner/repo").hostname, "github.com");
+  assert.throws(() => assertReleaseUrl("https://github.com/other/repo/releases/download/v1/Setup.exe", "owner/repo"), /not from the GitHub releases/);
+  assert.throws(() => assertReleaseUrl("https://evil.example/owner/repo/releases/download/v1/Setup.exe", "owner/repo"), /Refusing/);
+});
 
 test("pickInstaller prefers a setup .exe and skips blockmaps, portable builds and archives", () => {
   const assets = [

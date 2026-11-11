@@ -16,9 +16,9 @@ Download `App-Launcher-Setup-<version>.exe` from the Releases page and run it. T
 
 When an app has a newer GitHub release with a Windows installer, its card shows **Update to** the new version. App Launcher downloads the installer from that release, checks it against the SHA-256 checksum GitHub publishes, and asks you before it opens the installer. The dialog names the GitHub repo the file comes from. Apps with no installer on their release link to the release page instead.
 
-## Agents add apps, you approve them
+## Updating App Launcher itself
 
-Agents connected to App Launcher can add, check and launch apps. An app or command an agent adds does not run until you approve it: click **Run** or **Launch** on its card once, and App Launcher shows exactly what will run before it does. Anything an agent later changes about what runs has to be approved again. Websites open without approval.
+The top bar shows App Launcher's version and whether a newer release is out on GitHub. It checks when it starts and every hour, and **Check now** checks right away. When a new version is out, **Update now** downloads the setup from the release, checks it against GitHub's SHA-256 checksum, installs it and restarts App Launcher. A copy installed from git with the beta installer is updated by running the beta installer again.
 
 ## Connect your agents
 
