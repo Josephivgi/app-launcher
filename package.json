@@ -1,0 +1,63 @@
+{
+  "name": "app-launcher",
+  "productName": "App Launcher",
+  "version": "0.2.0",
+  "private": true,
+  "description": "One-click launcher for your apps, websites and commands. Connects to Claude Code and other agents over MCP so they can add apps.",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "smoke": "electron . --smoke",
+    "mcp": "node lib/mcp-stdio.cjs",
+    "dist": "electron-builder --win nsis --x64 --publish never",
+    "release-notes": "node scripts/release-notes.cjs"
+  },
+  "build": {
+    "appId": "com.jsystems.app-launcher",
+    "productName": "App Launcher",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "lib/**/*",
+      "renderer/**/*",
+      "docs/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "App-Launcher-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "App Launcher"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Josephivgi",
+      "repo": "app-launcher",
+      "releaseType": "release"
+    }
+  },
+  "devDependencies": {
+    "electron": "44.11.0",
+    "electron-builder": "26.18.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.7"
+  }
+}

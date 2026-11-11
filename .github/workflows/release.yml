@@ -1,0 +1,47 @@
+name: Release
+
+# Pushing a tag such as v0.2.0 builds the Windows installer and publishes it as
+# a GitHub release. The release notes come from the matching section of
+# CHANGELOG.md, and the tag must match package.json.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build the installer
+        run: npm run dist
+
+      - name: Write the release notes
+        shell: bash
+        run: node scripts/release-notes.cjs "$GITHUB_REF_NAME" > release-notes.md
+
+      - name: Publish the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" "dist/App-Launcher-Setup-${VERSION}.exe" \
+            --verify-tag \
+            --title "App Launcher ${VERSION}" \
+            --notes-file release-notes.md
