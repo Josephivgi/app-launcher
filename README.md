@@ -20,6 +20,8 @@ When an app has a newer GitHub release with a Windows installer, its card shows 
 
 The top bar shows App Launcher's version and whether a newer release is out on GitHub. It checks when it starts and every hour, and **Check now** checks right away. When a new version is out, **Update now** downloads the setup from the release, checks it against GitHub's SHA-256 checksum, installs it and restarts App Launcher. A copy installed from git with the beta installer is updated by running the beta installer again.
 
+GitHub allows 60 update checks an hour per internet connection without a login. When that runs out, App Launcher asks through the GitHub CLI (`gh`) with your login instead, if it is installed and signed in.
+
 ## Connect your agents
 
 Open the **Agents** tab. App Launcher finds the agents installed on this computer (Claude Code, Cursor, Gemini CLI, Codex) and connects each one by adding its MCP server to that agent's own settings file. The first time it runs, every agent it finds is connected. Each time App Launcher starts, and when its window comes back into focus, connected agents are checked and their entry is rewritten if it went missing or points at an old location. Disconnect removes the entry. The first change to a settings file keeps a copy next to it as `<file>.app-launcher-backup`.

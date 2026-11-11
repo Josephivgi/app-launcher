@@ -9,6 +9,7 @@
 **Improved**
 
 - No more approval prompts. Programs and commands an agent adds run the first time you click them, and agents can launch them too.
+- Update checks keep working when GitHub's hourly limit for your connection runs out: App Launcher uses your GitHub CLI login instead, if `gh` is installed and signed in.
 
 ## 0.2.0
 
