@@ -286,7 +286,16 @@ function registerIpc() {
     broadcast("apps-changed");
     return result;
   });
-  handle("apps-launch", (id) => apps.launch(String(id)));
+  // No approval step. Only an entry the risk check flags gets one warning first.
+  handle("apps-launch", async (id) => {
+    const found = apps.list().find((a) => a.id === String(id));
+    if (found && found.warnings && found.warnings.length) {
+      const what = found.kind === "command" ? found.launch.command : found.kind === "website" ? found.launch.url : found.launch.exe;
+      const ok = await confirm('"' + found.name + '" may be harmful', found.warnings.join("\n") + "\n\nIt will run:\n" + what, "Run anyway");
+      if (!ok) return { cancelled: true };
+    }
+    return apps.launch(String(id));
+  });
   handle("apps-install-update", (id) => apps.installUpdate(String(id)));
   handle("self-update-state", () => selfUpdate.get());
   handle("self-update-check", () => selfUpdate.check());

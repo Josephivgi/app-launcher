@@ -1,7 +1,7 @@
 {
   "name": "app-launcher",
   "productName": "App Launcher",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "One-click launcher for your apps, websites and commands. Connects to Claude Code and other agents over MCP so they can add apps.",
   "main": "electron/main.cjs",

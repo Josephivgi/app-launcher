@@ -43,6 +43,12 @@ function cardIcon(app) {
 
 // One short line under the name, and an optional problem line.
 function cardLines(app) {
+  const lines = baseLines(app);
+  const warn = (app.warnings || [])[0];
+  return warn && !lines.problem ? Object.assign(lines, { problem: "Warning: " + warn }) : lines;
+}
+
+function baseLines(app) {
   if (app.kind === "website") {
     return { sub: esc(host(app.launch.url)), problem: app.exeExists ? "" : "Browser not found" };
   }
@@ -58,6 +64,11 @@ function cardLines(app) {
 }
 
 function cardTitle(app) {
+  const warn = app.warnings && app.warnings.length ? "\n\nWarning:\n" + app.warnings.join("\n") : "";
+  return baseTitle(app) + warn;
+}
+
+function baseTitle(app) {
   if (app.kind === "website") return app.launch.url;
   if (app.kind === "command") return app.launch.command + (app.launch.cwd ? "\nin " + app.launch.cwd : "");
   return app.launch.exe;
@@ -74,7 +85,7 @@ function cardMarkup(app) {
     '<span class="card-icon">' + cardIcon(app) + "</span>" +
     '<span class="card-name">' + esc(app.name) + "</span>" +
     (sub ? '<span class="card-sub">' + sub + "</span>" : "") +
-    (problem ? '<span class="card-problem">' + icon("alert") + esc(problem) + "</span>" : "") +
+    (problem ? '<span class="card-problem' + (problem.startsWith("Warning: ") ? " warn" : "") + '">' + icon("alert") + esc(problem) + "</span>" : "") +
     "</button>" +
     (c.status === "update" && app.kind === "app" && c.installer
       ? '<button class="card-update" data-act="install" title="Download ' + esc(c.installer.name) + " from GitHub and open it\"" + (view.installing.has(app.id) ? " disabled" : "") + ">" +
@@ -251,8 +262,8 @@ export function renderApps(main, ctx) {
       if (act === "launch") {
         btn.disabled = true;
         try {
-          await ctx.shell.apps.launch(id);
-          toast((app.kind === "website" ? "Opened " : app.kind === "command" ? "Ran " : "Launched ") + app.name);
+          const res = await ctx.shell.apps.launch(id);
+          if (!(res && res.cancelled)) toast((app.kind === "website" ? "Opened " : app.kind === "command" ? "Ran " : "Launched ") + app.name);
         } finally {
           setTimeout(() => (btn.disabled = !app.exeExists), 600);
         }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+**Improved**
+
+- Apps, websites and commands an agent adds never need approval. App Launcher only warns you when one looks harmful, for example a command that deletes whole folders, downloads a script and runs it, or turns off Windows Defender. The card shows the warning, and clicking it asks once before running.
+- Agents see the same warnings in `app_list`, `app_add` and `app_launch`.
+
 ## 0.3.0
 
 **New**

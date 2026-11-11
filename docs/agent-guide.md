@@ -43,6 +43,10 @@ Example: `{"name":"Blog dev server","command":"npm run dev","cwd":"C:\\Users\\me
 
 Use a command when the thing to open is a command line. Use an app when it is a single program file.
 
+## Warnings
+
+Nothing you add needs approval. Each entry in `app_list`, `app_add` and `app_update` results has `warnings`: plain reasons App Launcher thinks it may be harmful (for example "Deletes whole folders" or "Downloads a script and runs it"). An empty list means nothing was flagged. A flagged entry shows the warning on its card, and the person is asked once when they click it. `app_launch` still runs it and returns the same `warnings`. If you see a warning you did not expect, tell the person instead of launching it.
+
 ## Installing updates
 
 App Launcher can download a newer release from the app's GitHub repo and open its Windows installer, but only when the person clicks **Update to** on the card and confirms. The `app_list` entry shows `installer` (the file name) when a release has one. You cannot install updates yourself.
