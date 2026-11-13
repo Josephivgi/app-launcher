@@ -73,9 +73,27 @@ test("commandSpawn writes a script so quotes and & survive", () => {
   const script = fs.readFileSync(path.join(root, "commands", "t.cmd"), "utf8");
   assert.match(script, /echo "a & b"\r\n$/);
   assert.match(script, /^@title T  Co\r\n/);
-  assert.equal(run.args.at(-1), '"' + path.join(root, "commands", "t.cmd") + '"');
+  assert.equal(run.args.at(-1), '""' + path.join(root, "commands", "t.cmd") + '""');
   const shown = commandSpawn(root, Object.assign({}, app, { launch: Object.assign({}, app.launch, { terminal: true }) }));
   assert.match(shown.args.at(-1), /^start "T  Co" \/D /);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("a hidden command runs when the data folder has a space in its path", { skip: process.platform !== "win32" }, () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { spawnSync } = require("node:child_process");
+  const { commandSpawn, normalizeApp } = require("../lib/apps");
+  // The real data folder is "%APPDATA%\App Launcher", so the script path
+  // always has a space in it.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "al cmd "));
+  const marker = path.join(root, "ran.txt");
+  const app = normalizeApp({ id: "t", name: "T", command: 'echo ran>"' + marker + '"', cwd: root, terminal: false });
+  const run = commandSpawn(root, app);
+  const result = spawnSync(run.file, run.args, { cwd: run.cwd, encoding: "utf8", windowsVerbatimArguments: run.verbatim });
+  assert.equal(result.status, 0, String(result.stderr || ""));
+  assert.ok(fs.existsSync(marker), "the command script did not run");
   fs.rmSync(root, { recursive: true, force: true });
 });
 
