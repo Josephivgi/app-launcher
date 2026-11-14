@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0
+
+**New**
+
+- Search works from the keyboard. Press Ctrl+K or / to jump to search, Enter to open the first match, and Esc to clear it. While you search, the count shows how many match, like "1 of 6".
+- Cards show their description under the name, so apps an agent adds say what they do.
+- Apps have a Start in folder field and an Arguments box with one argument per line.
+
+**Improved**
+
+- Edit, Remove and Check are always visible on each card, not only when you hover over it.
+- The add form is shorter. The type comes from the button you clicked, Name sits next to Show under, and the examples in empty fields start with "e.g.".
+- The button next to Add is now labeled Check for updates, and the top bar says "App Launcher v..." so it is clear which update it means.
+- Esc closes an open form. If you typed something, it asks before throwing it away.
+- When an update check fails, hovering the card shows why.
+- Addresses like localhost:4310 open over http, which is what local dev servers use.
+- Agents get a fuller guide: every field, which kinds it applies to, and an example. app_list now includes each app's start folder.
+
+**Fixed**
+
+- Adding an app by hand failed with "A json version source needs a full path" unless you filled in the version fields. It now reads the version from the program itself.
+- Commands set to run without a terminal window never ran. They work now.
+- Reading an app's version from its .exe always came back empty. It works now.
+- Short messages like "Launched Simple Recorder" or "Prompt copied" never appeared. They show at the bottom of the window now.
+- The app form showed a "Show a terminal window" checkbox that only applies to commands.
+- Pre-release versions like beta.10 and beta.2 were compared in the wrong order.
+
 ## 0.3.2
 
 **New**
