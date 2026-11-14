@@ -82,7 +82,7 @@ export function renderAgents(main, ctx) {
     '<div class="page-head"><h1>Agents</h1></div>' +
     '<p class="muted">App Launcher connects to your agents through their MCP settings, the same way <code>claude mcp add</code> does. Once connected, an agent can add, check and launch apps for you. The entry is kept current: if App Launcher moves or updates, it is rewritten the next time App Launcher starts. Agents you have not installed are not touched.</p>' +
     '<div class="panel"><div class="rows" data-agents><div class="empty">Looking for agents…</div></div></div>' +
-    '<div class="panel"><div class="panel-head"><h2>Connect another agent</h2><button class="btn sm ghost" data-copy>Copy prompt</button></div>' +
+    '<div class="panel"><div class="panel-head"><h2>Connect another agent</h2><button class="btn sm secondary" data-copy style="margin-left:auto">Copy prompt</button></div>' +
     '<div class="pad"><p class="small muted">Any agent that supports MCP servers can connect. Paste this prompt into it and it sets up the connection itself.</p>' +
     '<pre class="cmd" data-prompt></pre></div></div>' +
     "</div></div>";

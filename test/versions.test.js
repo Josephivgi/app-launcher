@@ -56,3 +56,19 @@ test("normalizeApp validates and defaults", () => {
   assert.equal(edited.launch.exe, exe);
   assert.equal(edited.description, "d");
 });
+
+test("prerelease ids compare numerically, dot by dot", () => {
+  assert.equal(compareVersions("1.0.0-beta.10", "1.0.0-beta.2"), 1);
+  assert.equal(compareVersions("1.0.0-beta", "1.0.0-beta.1"), -1);
+  assert.equal(compareVersions("1.0.0-alpha", "1.0.0-beta"), -1);
+  assert.equal(compareVersions("1.0.0-1", "1.0.0-alpha"), -1);
+  assert.equal(compareVersions("1.0.0-beta.90071992547409931", "1.0.0-beta.90071992547409930"), 1);
+  assert.equal(compareVersions("1.0.0-rc.01", "1.0.0-rc.1"), 0);
+  assert.equal(compareVersions("1.0.0-rc.1", "1.0.0-rc.01"), 0);
+});
+
+test("exe version source reads a real Windows program's file version", { skip: process.platform !== "win32" }, async () => {
+  const cmd = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "cmd.exe");
+  const v = await readInstalledVersion({ versionSource: { type: "exe" }, launch: { exe: cmd } });
+  assert.match(v, /^\d+\.\d+\.\d+/);
+});

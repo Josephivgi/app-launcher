@@ -233,7 +233,7 @@ async function runSmoke(ctx) {
 
   await step("UI shows icon cards and one click runs a command", async () => {
     const win = new BrowserWindow({ width: 1100, height: 760, show: false, useContentSize: true, webPreferences: { preload, offscreen: true, contextIsolation: true, sandbox: true, nodeIntegration: false } });
-    const js = (code) => win.webContents.executeJavaScript(code);
+    const js = (code) => win.webContents.executeJavaScript(code).catch((e) => { throw new Error(e.message + " in: " + code.slice(0, 160)); });
     const consoleLines = [];
     win.webContents.on("console-message", (e) => consoleLines.push(String(e.message || "").slice(0, 200)));
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -271,6 +271,9 @@ async function runSmoke(ctx) {
         expect(false, "stored icon not shown: " + JSON.stringify(byId["click-cmd"]) + " cards " + dbg);
       }
       const shot = process.env.APP_LAUNCHER_SHOT;
+      // Offscreen windows can return an older frame; force a fresh one first.
+      win.webContents.invalidate();
+      await wait(400);
       if (shot) fs.writeFileSync(shot, (await win.webContents.capturePage()).toPNG());
       await js('document.querySelector("[data-app=click-cmd] .card-open").click()');
       for (let i = 0; i < 40 && !fs.existsSync(marker); i++) await wait(250);
@@ -292,20 +295,132 @@ async function runSmoke(ctx) {
         if (/up to date|is available|is out|failed/.test(after)) break;
       }
       expect(/up to date|is available|is out/.test(after), "Check now did not show a result: before \"" + before + "\" after \"" + after + "\"");
-      if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-updates.png"), (await win.webContents.capturePage()).toPNG());
+      await js('document.getElementById("toast").classList.remove("show")');
+      await wait(250);
       if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-command-form.png"), (await win.webContents.capturePage()).toPNG());
       await js('document.querySelector("[data-act=cancel]").click()');
+      await wait(200);
+      await js('document.getElementById("toast").classList.remove("show")');
+      await wait(250);
+      if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-updates.png"), (await win.webContents.capturePage()).toPNG());
+      // A person adds an app with only a name and a program: the default
+      // version source must not get in the way.
+      await js('document.querySelector("[data-act=add][data-kind=app]").click()');
+      await wait(300);
+      const appForm = await js('(() => { const f = document.querySelector("[data-form]"); return { kindSelect: f.elements.kind.tagName, vtype: f.elements.vtype.value, args: !!f.elements.args, termHidden: getComputedStyle(f.elements.terminal.closest("label")).display === "none" }; })()');
+      expect(appForm.kindSelect === "INPUT" && appForm.vtype === "exe" && appForm.args && appForm.termHidden, "add-app form wrong: " + JSON.stringify(appForm));
+      await js("(() => { const f = document.querySelector('[data-form]'); f.elements.name.value = 'Form Probe'; f.elements.exe.value = " + JSON.stringify(process.execPath) + "; f.elements.args.value = '--version\\n--verbose'; f.elements.description.value = 'Added from the form in the smoke run'; })()");
+      // Let the filled fields paint and the earlier toast go before the capture.
+      await js('document.getElementById("toast").classList.remove("show")');
+      await wait(300);
+      if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-app-form.png"), (await win.webContents.capturePage()).toPNG());
+      await js('document.querySelector("[data-form] [type=submit]").click()');
+      let probe = null;
+      for (let i = 0; i < 40 && !probe; i++) {
+        await wait(250);
+        probe = apps.list().find((a) => a.id === "form-probe");
+      }
+      expect(probe && probe.versionSource.type === "exe" && JSON.stringify(probe.launch.args) === JSON.stringify(["--version", "--verbose"]), "form add failed: " + JSON.stringify(probe) + " toast: " + (await js('document.getElementById("toast").textContent')));
+      for (let i = 0; i < 80 && (await js('!!document.querySelector("[data-form]")')); i++) await wait(250);
+      expect(!(await js('!!document.querySelector("[data-form]")')), "form did not close after Add");
+      for (let i = 0; i < 20 && !(await js('!!document.querySelector("[data-app=form-probe] .card-desc")')); i++) await wait(150);
+      expect(await js('!!document.querySelector("[data-app=form-probe] .card-desc")'), "description not shown on the card");
+      // An agent sets an argument with a space; a person edits only the name
+      // and saves. The argument must come back whole.
+      await apps.update({ id: "form-probe", args: ["--dir", "C:\\My Folder", "--title=\"a b\"", ""] });
+      // The registry call here sends no event, so reopen the Apps page to reload the list.
+      await js('document.querySelector("[data-nav=settings]").click()');
+      await wait(150);
+      await js('document.querySelector("[data-nav=apps]").click()');
+      for (let i = 0; i < 40 && !(await js('!!document.querySelector("[data-app=form-probe] [data-act=edit]")')); i++) await wait(150);
+      await js('document.querySelector("[data-app=form-probe] [data-act=edit]").click()');
+      await wait(300);
+      // An empty last argument cannot be shown as lines, so the box is read-only.
+      expect(await js("document.querySelector('[data-form]').elements.args.readOnly"), "arguments with an empty last one are editable");
+      await js("(() => { const f = document.querySelector('[data-form]'); f.elements.name.value = 'Form Probe 2'; })()");
+      await js('document.querySelector("[data-form] [type=submit]").click()');
+      let edited = null;
+      for (let i = 0; i < 40 && !(edited && edited.name === "Form Probe 2"); i++) {
+        await wait(250);
+        edited = apps.get("form-probe");
+      }
+      expect(edited.name === "Form Probe 2" && JSON.stringify(edited.launch.args) === JSON.stringify(["--dir", "C:\\My Folder", "--title=\"a b\"", ""]), "edit changed the arguments: " + JSON.stringify(edited.launch.args));
+      for (let i = 0; i < 80 && (await js('!!document.querySelector("[data-form]")')); i++) await wait(250);
+      // A person adds one argument line by hand: every other argument stays
+      // exact, including an empty one in the middle and a last one of spaces.
+      await apps.update({ id: "form-probe", args: ["--dir", "C:\\My Folder", "", "  "] });
+      await js('document.querySelector("[data-nav=settings]").click()');
+      await wait(150);
+      await js('document.querySelector("[data-nav=apps]").click()');
+      for (let i = 0; i < 40 && !(await js('!!document.querySelector("[data-app=form-probe] [data-act=edit]")')); i++) await wait(150);
+      await js('document.querySelector("[data-app=form-probe] [data-act=edit]").click()');
+      await wait(300);
+      expect(!(await js("document.querySelector('[data-form]').elements.args.readOnly")), "plain arguments are read-only");
+      await js("(() => { const t = document.querySelector('[data-form]').elements.args; t.value = '--new\\n' + t.value; })()");
+      await js('document.querySelector("[data-form] [type=submit]").click()');
+      let handEdited = null;
+      for (let i = 0; i < 40 && !(handEdited && handEdited.launch.args.includes("--new")); i++) {
+        await wait(250);
+        handEdited = apps.get("form-probe");
+      }
+      expect(JSON.stringify(handEdited.launch.args) === JSON.stringify(["--new", "--dir", "C:\\My Folder", "", "  "]), "hand edit changed other arguments: " + JSON.stringify(handEdited.launch.args));
+      for (let i = 0; i < 80 && (await js('!!document.querySelector("[data-form]")')); i++) await wait(250);
+      // Esc on a form with typed text asks first; "No" keeps the form, "Yes" closes it.
+      await js('document.querySelector("[data-act=add][data-kind=command]").click()');
+      await wait(200);
+      await js("(() => { document.querySelector('[data-form]').elements.command.value = 'echo half typed'; })()");
+      ctx.smokeAnswers.discard = false;
+      await js('document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))');
+      await wait(100);
+      expect(await js('!!document.querySelector("[data-form]")'), "Esc discarded typed text when the answer was No");
+      // After "No" the form still takes typing.
+      await js("document.querySelector('[data-form]').elements.command.focus()");
+      win.webContents.insertText(" more");
+      await wait(100);
+      expect((await js("document.querySelector('[data-form]').elements.command.value")) === "echo half typed more", "form stopped taking typing after No");
+      ctx.smokeAnswers.discard = true;
+      await js('document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))');
+      await wait(100);
+      expect(!(await js('!!document.querySelector("[data-form]")')), "Esc did not close after Yes");
+      // Keyboard: Ctrl+K focuses search, the count follows the filter, Enter
+      // opens the first match, Esc clears, Esc closes an open form.
+      await js('document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))');
+      expect(await js('document.activeElement && document.activeElement.matches("[data-filter]")'), "Ctrl+K did not focus search");
+      await js('(() => { const s = document.querySelector("[data-filter]"); s.value = "click"; s.dispatchEvent(new Event("input", { bubbles: true })); })()');
+      await wait(100);
+      const count = await js('document.querySelector("[data-count]").textContent');
+      expect(/^1 of \d+$/.test(count), "filtered count wrong: " + count);
+      await js('document.getElementById("toast").classList.remove("show")');
+      await wait(300);
+      if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-search.png"), (await win.webContents.capturePage()).toPNG());
+      fs.rmSync(marker, { force: true });
+      await js('document.querySelector("[data-filter]").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))');
+      for (let i = 0; i < 40 && !fs.existsSync(marker); i++) await wait(250);
+      expect(fs.existsSync(marker), "Enter in search did not open the match");
+      await js('document.querySelector("[data-filter]").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))');
+      await wait(100);
+      expect((await js('document.querySelector("[data-filter]").value')) === "" && (await js("document.querySelectorAll('.card').length")) > 1, "Esc did not clear search");
+      await js('document.querySelector("[data-act=add][data-kind=website]").click()');
+      await wait(200);
+      await js('document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))');
+      await wait(100);
+      expect(!(await js('!!document.querySelector("[data-form]")')), "Esc did not close the form");
+      apps.remove("form-probe");
       apps.remove("jsystems");
       apps.remove("click-cmd");
       await js('document.querySelector("[data-nav=agents]").click()');
       await wait(900);
       const agentsText = await js("document.body.innerText");
       expect(/Claude Code/.test(agentsText), "agents page missing: " + agentsText.slice(0, 200));
+      await js('document.getElementById("toast").classList.remove("show")');
+      await wait(250);
       if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-agents.png"), (await win.webContents.capturePage()).toPNG());
       await js('document.querySelector("[data-nav=settings]").click()');
       await wait(300);
       const settingsText = await js("document.body.innerText");
       expect(/Find other apps/.test(settingsText) && /Open jsystems\.app/.test(settingsText), "settings page missing: " + settingsText.slice(0, 200));
+      await js('document.getElementById("toast").classList.remove("show")');
+      await wait(250);
       if (shot) fs.writeFileSync(shot.replace(/\.png$/i, "-settings.png"), (await win.webContents.capturePage()).toPNG());
       return "exe icons in " + iconMs + " ms; " + cards.map((c) => c.id + (c.img ? " (icon " + c.img + "px)" : "")).join(", ");
     } finally {

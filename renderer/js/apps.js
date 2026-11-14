@@ -65,13 +65,14 @@ function baseLines(app) {
 
 function cardTitle(app) {
   const warn = app.warnings && app.warnings.length ? "\n\nWarning:\n" + app.warnings.join("\n") : "";
-  return baseTitle(app) + warn;
+  return (app.description ? app.description + "\n" : "") + baseTitle(app) + warn;
 }
 
 function baseTitle(app) {
   if (app.kind === "website") return app.launch.url;
   if (app.kind === "command") return app.launch.command + (app.launch.cwd ? "\nin " + app.launch.cwd : "");
-  return app.launch.exe;
+  const c = app.check || {};
+  return app.launch.exe + (c.status === "error" && c.error ? "\n\nCheck failed: " + c.error : "");
 }
 
 function cardMarkup(app) {
@@ -84,6 +85,7 @@ function cardMarkup(app) {
     '<button class="card-open" data-act="launch" title="' + esc(verb + " " + app.name + "\n" + cardTitle(app)) + '"' + (ready ? "" : " disabled") + ">" +
     '<span class="card-icon">' + cardIcon(app) + "</span>" +
     '<span class="card-name">' + esc(app.name) + "</span>" +
+    (app.description ? '<span class="card-desc">' + esc(app.description) + "</span>" : "") +
     (sub ? '<span class="card-sub">' + sub + "</span>" : "") +
     (problem ? '<span class="card-problem' + (problem.startsWith("Warning: ") ? " warn" : "") + '">' + icon("alert") + esc(problem) + "</span>" : "") +
     "</button>" +
@@ -112,7 +114,7 @@ function sectionOptions(app) {
 
 function formMarkup(app, newKind) {
   const kind = app ? app.kind || "app" : newKind || "app";
-  const blank = { launch: { exe: "", args: [], url: "", browser: "", command: "", cwd: "", shell: "cmd", terminal: true }, versionSource: { type: "json", path: "", key: "version" } };
+  const blank = { launch: { exe: "", args: [], url: "", browser: "", command: "", cwd: "", shell: "cmd", terminal: true }, versionSource: { type: "exe" } };
   const a = app || blank;
   const l = Object.assign({}, blank.launch, a.launch);
   const vs = a.versionSource || { type: "manual" };
@@ -122,11 +124,14 @@ function formMarkup(app, newKind) {
     '<form class="app-form panel" data-form>' +
     "<h2>" + title + "</h2>" +
     '<div class="form-grid">' +
-    '<label class="field">Type<select class="select" name="kind">' +
-    Object.keys(KIND_LABEL).map((k) => '<option value="' + k + '"' + (kind === k ? " selected" : "") + ">" + KIND_LABEL[k] + "</option>").join("") +
-    "</select></label>" +
-    '<label class="field">Section<select class="select" name="section">' + sectionOptions(app) + '</select></label>' +
-    '<label class="field">Name<input class="input" name="name" required value="' + esc(a.name || "") + '"></label>' +
+    '<label class="field">Name<input class="input" name="name" required placeholder="' + { app: "e.g. Simple Recorder", website: "e.g. My blog", command: "e.g. Blog dev server" }[kind] + '" value="' + esc(a.name || "") + '"></label>' +
+    '<label class="field">Show under<select class="select" name="section">' + sectionOptions(app) + '</select></label>' +
+    // The add buttons pick the type; only an edit can change it.
+    (app
+      ? '<label class="field">Type<select class="select" name="kind">' +
+        Object.keys(KIND_LABEL).map((k) => '<option value="' + k + '"' + (kind === k ? " selected" : "") + ">" + KIND_LABEL[k] + "</option>").join("") +
+        "</select></label>"
+      : '<input type="hidden" name="kind" value="' + kind + '">') +
     // Icon, all kinds
     '<div class="field wide icon-field"><span>Icon</span><div class="icon-row"><span class="icon-preview" data-icon-preview>' + preview + "</span>" +
     '<input class="input" name="icon" placeholder="' + (app && (app.icon || app.iconFrom) ? "Keep the current icon, or paste a new image path or URL" : "Image file path or https:// image URL (optional)") + '">' +
@@ -134,26 +139,48 @@ function formMarkup(app, newKind) {
     (app && (app.icon || app.iconFrom) ? '<button type="button" class="btn ghost" data-act="clear-icon">Remove icon</button>' : "") +
     '<input type="hidden" name="clearIcon" value=""></div></div>' +
     // Website
-    '<label class="field wide" data-k="website">Website address<input class="input" name="url" placeholder="https://example.com" value="' + esc(l.url || "") + '"></label>' +
-    '<label class="field wide" data-k="website">Browser (leave empty for your default browser)<span class="pick"><input class="input" name="browser" placeholder="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" value="' + esc(l.browser || "") + '"><button type="button" class="btn secondary" data-act="pick-browser">Browse</button></span></label>' +
+    '<label class="field wide" data-k="website">Website address<input class="input" name="url" placeholder="e.g. https://example.com" value="' + esc(l.url || "") + '"></label>' +
+    '<label class="field wide" data-k="website">Browser<span class="pick"><input class="input" name="browser" placeholder="Default browser" value="' + esc(l.browser || "") + '"><button type="button" class="btn secondary" data-act="pick-browser">Browse</button></span></label>' +
     // Command
-    '<label class="field wide" data-k="command">Command<textarea class="textarea mono-input" name="command" rows="2" placeholder="npm run dev">' + esc(l.command || "") + "</textarea></label>" +
-    '<label class="field wide" data-k="command">Run in folder (leave empty for your home folder)<span class="pick"><input class="input" name="cwd" placeholder="C:\\Users\\you\\project" value="' + esc(kind === "command" ? l.cwd || "" : "") + '"><button type="button" class="btn secondary" data-act="pick-folder">Browse</button></span></label>' +
+    '<label class="field wide" data-k="command">Command<textarea class="textarea mono-input" name="command" rows="2" placeholder="e.g. npm run dev">' + esc(l.command || "") + "</textarea></label>" +
+    '<label class="field wide" data-k="command">Run in folder<span class="pick"><input class="input" name="cwd" placeholder="Your home folder" value="' + esc(kind === "command" ? l.cwd || "" : "") + '"><button type="button" class="btn secondary" data-act="pick-folder">Browse</button></span></label>' +
     '<label class="field" data-k="command">Shell<select class="select" name="shell"><option value="cmd"' + (l.shell !== "powershell" ? " selected" : "") + '>Command Prompt</option><option value="powershell"' + (l.shell === "powershell" ? " selected" : "") + ">PowerShell</option></select></label>" +
     '<label class="field check" data-k="command"><input type="checkbox" name="terminal"' + (l.terminal !== false ? " checked" : "") + "> Show a terminal window with the output</label>" +
     // App
-    '<label class="field wide" data-k="app">Program<span class="pick"><input class="input" name="exe" placeholder="C:\\Path\\To\\App.exe" value="' + esc(l.exe || "") + '"><button type="button" class="btn secondary" data-act="pick">Browse</button></span></label>' +
-    '<label class="field" data-k="app">GitHub repo<input class="input" name="repo" placeholder="owner/name" value="' + esc(a.repo || "") + '"></label>' +
+    '<label class="field wide" data-k="app">Program<span class="pick"><input class="input" name="exe" placeholder="e.g. C:\\Program Files\\App\\App.exe" value="' + esc(l.exe || "") + '"><button type="button" class="btn secondary" data-act="pick">Browse</button></span></label>' +
+    '<label class="field wide" data-k="app">Arguments (optional, one per line, .exe programs only)<textarea class="textarea mono-input" name="args" rows="' + Math.min(4, Math.max(2, (l.args || []).length)) + '" placeholder="e.g. --profile&#10;work" data-start="' + esc(argText(l.args)) + '"' + (argsFitLines(l.args) ? "" : " readonly") + ">" + "\n" + esc(argText(l.args)) + "</textarea>" +
+    (argsFitLines(l.args) ? "" : '<span class="small muted">An agent set arguments this box cannot show exactly (a line break inside one, or an empty last one). Ask the agent to change them.</span>') + "</label>" +
+    '<label class="field wide" data-k="app">Start in folder (.exe programs only)<span class="pick"><input class="input" name="appcwd" placeholder="The program\'s own folder" value="' + esc(kind === "app" ? l.cwd || "" : "") + '"><button type="button" class="btn secondary" data-act="pick-appcwd">Browse</button></span></label>' +
+    '<label class="field" data-k="app">GitHub repo (optional, for update checks)<input class="input" name="repo" placeholder="e.g. owner/name" value="' + esc(a.repo || "") + '"></label>' +
     '<label class="field" data-k="app">Installed version from<select class="select" name="vtype">' +
     ["json", "text", "exe", "manual"].map((t) => '<option value="' + t + '"' + (vs.type === t ? " selected" : "") + ">" + { json: "A JSON file", text: "A text file", exe: "The program's file version", manual: "A version I type" }[t] + "</option>").join("") +
     "</select></label>" +
     '<label class="field" data-k="app" data-v="file">File path<input class="input" name="vpath" placeholder="C:\\Path\\install.json" value="' + esc(vs.path || "") + '"></label>' +
     '<label class="field" data-k="app" data-v="json">JSON key<input class="input" name="vkey" placeholder="version" value="' + esc(vs.key || "") + '"></label>' +
     '<label class="field" data-k="app" data-v="manual">Version<input class="input" name="vvalue" placeholder="1.2.3" value="' + esc(vs.value || "") + '"></label>' +
-    '<label class="field wide">Description<input class="input" name="description" value="' + esc(a.description || "") + '"></label>' +
+    '<label class="field wide">Description (shown on the card)<input class="input" name="description" placeholder="Optional, one short line" value="' + esc(a.description || "") + '"></label>' +
     "</div>" +
     '<div class="form-actions"><button class="btn primary" type="submit">' + (app ? "Save" : "Add") + '</button><button class="btn ghost" type="button" data-act="cancel">Cancel</button></div></form>'
   );
+}
+
+// Arguments one per line, so each line is exactly one stored argument.
+function argText(args) {
+  return (args || []).join("\n");
+}
+
+// Only empty lines at the end are dropped (a stray Enter); a line of spaces is an argument.
+function argLines(text) {
+  const lines = String(text).replace(/\r/g, "").split("\n");
+  while (lines.length && lines[lines.length - 1] === "") lines.pop();
+  return lines;
+}
+
+// Arguments the box can show exactly: no line break inside one, and no empty last one.
+// Others stay read-only so an edit can never change them.
+function argsFitLines(args) {
+  const list = args || [];
+  return list.every((a) => !/[\r\n]/.test(a)) && (!list.length || list[list.length - 1] !== "");
 }
 
 function syncFields(form) {
@@ -166,9 +193,13 @@ function syncFields(form) {
   form.querySelector('[data-v="manual"]').hidden = t !== "manual";
 }
 
+function formState(form) {
+  return JSON.stringify([...new FormData(form)]);
+}
+
 function matches(app, q) {
   if (!q) return true;
-  const hay = [app.name, app.description, app.launch.exe, app.launch.url, app.launch.command].filter(Boolean).join(" ").toLowerCase();
+  const hay = [app.name, app.id, app.repo, app.description, app.launch.exe, app.launch.url, app.launch.command].filter(Boolean).join(" ").toLowerCase();
   return hay.includes(q);
 }
 
@@ -187,27 +218,37 @@ function paint() {
       ? block("My apps", mine) + block("External", external)
       : '<div class="empty wide">Nothing matches "' + esc(view.filter) + '".</div>'
     : '<div class="empty wide">Nothing here yet. Add an app, a website or a command, or connect an agent on the Agents page and ask it to add one.</div>';
-  main.querySelector("[data-count]").textContent = apps.length ? String(apps.length) : "";
+  main.querySelector("[data-count]").textContent = !apps.length ? "" : q ? shown.length + " of " + apps.length : String(apps.length);
+  view.shown = shown;
   if (editing !== undefined && !form.firstChild) {
     form.innerHTML = formMarkup(editing, view.newKind);
     syncFields(form.querySelector("form"));
+    view.formStart = formState(form.querySelector("form"));
     form.querySelector('[name="name"]').focus();
+    form.scrollIntoView({ block: "nearest" });
   } else if (editing === undefined) {
     form.innerHTML = "";
   }
 }
 
 async function runCheck(id) {
-  if (id) view.checking.add(id);
-  else for (const a of view.apps) view.checking.add(a.id);
+  // Only apps have a version to check; clear only the ids this run marked,
+  // on the page that started it (the person may have left meanwhile).
+  const local = view;
+  const ids = id ? [id] : local.apps.filter((a) => a.kind === "app" || !a.kind).map((a) => a.id);
+  for (const x of ids) local.checking.set(x, (local.checking.get(x) || 0) + 1);
   paint();
   try {
-    await view.ctx.shell.apps.check(id || "");
+    await local.ctx.shell.apps.check(id || "");
   } catch (error) {
     toast(errorText(error));
   }
-  view.checking.clear();
-  onAppsChanged();
+  for (const x of ids) {
+    const n = (local.checking.get(x) || 1) - 1;
+    if (n > 0) local.checking.set(x, n);
+    else local.checking.delete(x);
+  }
+  if (view === local) onAppsChanged();
 }
 
 function readForm(form) {
@@ -224,7 +265,11 @@ function readForm(form) {
   if (type === "json" || type === "text") versionSource.path = f.vpath.value.trim();
   if (type === "json" && f.vkey.value.trim()) versionSource.key = f.vkey.value.trim();
   if (type === "manual") versionSource.value = f.vvalue.value.trim();
-  return Object.assign(out, { repo: f.repo.value.trim(), exe: f.exe.value.trim(), versionSource });
+  // A JSON or text source with no file filled in falls back to the program's own version.
+  const vs = (type === "json" || type === "text") && !versionSource.path ? { type: "exe" } : versionSource;
+  return Object.assign(out, { repo: f.repo.value.trim(), exe: f.exe.value.trim(), cwd: f.appcwd.value.trim(), versionSource: vs },
+    // Untouched (or read-only) arguments are left exactly as stored.
+    f.args.value.replace(/\r/g, "") !== f.args.dataset.start ? { args: argLines(f.args.value) } : {});
 }
 
 function openForm(editing, kind) {
@@ -238,15 +283,15 @@ export function renderApps(main, ctx) {
   main.innerHTML =
     '<div class="page"><div class="page-inner wide">' +
     '<div class="page-head"><h1>Apps <span class="count" data-count></span></h1>' +
-    '<input class="input search" type="search" placeholder="Search" aria-label="Search apps" data-filter>' +
+    '<input class="input search" type="search" placeholder="Search apps (Ctrl+K)" aria-label="Search apps. Enter opens the first match, Esc clears." title="Enter opens the first match. Esc clears." data-filter>' +
     '<span class="spacer"></span>' +
-    '<button class="btn ghost icon-only" data-act="check-all" title="Check every app for a newer GitHub release" aria-label="Check all for updates">' + icon("reload") + "</button>" +
+    '<button class="btn ghost" data-act="check-all" title="Check every app for a newer release on GitHub">' + icon("reload") + "Check for updates</button>" +
     '<button class="btn secondary" data-act="add" data-kind="app">' + icon("plus") + "App</button>" +
     '<button class="btn secondary" data-act="add" data-kind="website">' + icon("globe") + "Website</button>" +
     '<button class="btn secondary" data-act="add" data-kind="command">' + icon("terminal") + "Command</button>" +
     "</div>" +
     '<div data-form-slot></div><div data-grid></div></div></div>';
-  view = { main, ctx, apps: [], editing: undefined, newKind: "app", checking: new Set(), installing: new Set(), filter: "" };
+  view = { main, ctx, apps: [], editing: undefined, newKind: "app", checking: new Map(), installing: new Set(), filter: "" };
   const local = view;
 
   main.addEventListener("click", async (event) => {
@@ -271,14 +316,14 @@ export function renderApps(main, ctx) {
       else if (act === "check-all") await runCheck("");
       else if (act === "release") await ctx.shell.openExternal(btn.dataset.url);
       else if (act === "install") {
-        view.installing.add(id);
+        local.installing.add(id);
         paint();
         try {
           const res = await ctx.shell.apps.installUpdate(id);
           if (res && res.opened) toast("Opened the " + res.version + " installer" + (res.verified ? "" : " (no checksum to verify it)"));
         } finally {
-          view.installing.delete(id);
-          onAppsChanged();
+          local.installing.delete(id);
+          if (view === local) onAppsChanged();
         }
       }
       else if (act === "add") openForm(null, btn.dataset.kind);
@@ -289,9 +334,9 @@ export function renderApps(main, ctx) {
       } else if (act === "pick" || act === "pick-browser") {
         const picked = await ctx.shell.apps.pickExe();
         if (picked) form.elements[act === "pick" ? "exe" : "browser"].value = picked;
-      } else if (act === "pick-folder") {
-        const picked = await ctx.shell.apps.pickFolder();
-        if (picked) form.elements.cwd.value = picked;
+      } else if (act === "pick-folder" || act === "pick-appcwd") {
+        const picked = await ctx.shell.apps.pickFolder(act === "pick-appcwd");
+        if (picked) form.elements[act === "pick-folder" ? "cwd" : "appcwd"].value = picked;
       } else if (act === "pick-icon") {
         const picked = await ctx.shell.apps.pickIcon();
         if (picked) {
@@ -310,6 +355,37 @@ export function renderApps(main, ctx) {
       toast(errorText(error));
     }
   });
+  const onKey = (event) => {
+    if (view !== local) return;
+    const search = main.querySelector("[data-filter]");
+    const typing = event.target.closest && event.target.closest("input, textarea, select");
+    if ((String(event.key).toLowerCase() === "k" && (event.ctrlKey || event.metaKey)) || (event.key === "/" && !typing)) {
+      event.preventDefault();
+      search.focus();
+      search.select();
+    } else if (event.key === "Escape") {
+      if (view.editing !== undefined) {
+        const open = main.querySelector("[data-form]");
+        const close = () => {
+          if (view !== local || view.editing === undefined) return;
+          view.editing = undefined;
+          paint();
+        };
+        if (open && formState(open) !== view.formStart) ctx.shell.confirmDiscard().then((yes) => yes && close()).catch((error) => toast(errorText(error)));
+        else close();
+      } else if (view.filter) {
+        search.value = "";
+        view.filter = "";
+        paint();
+      }
+    } else if (event.key === "Enter" && event.target === search && view.filter && view.shown && view.shown.length) {
+      // The first match in grid order that can open (a missing program is skipped).
+      const order = view.shown.filter((a) => a.section !== "external").concat(view.shown.filter((a) => a.section === "external"));
+      const first = order.map((a) => main.querySelector('[data-app="' + CSS.escape(a.id) + '"] .card-open')).find((b) => b && !b.disabled);
+      if (first) first.click();
+    }
+  };
+  document.addEventListener("keydown", onKey);
   main.addEventListener("input", (event) => {
     if (view !== local || !event.target.matches("[data-filter]")) return;
     view.filter = event.target.value;
@@ -344,6 +420,7 @@ export function renderApps(main, ctx) {
     paint();
   });
   return () => {
+    document.removeEventListener("keydown", onKey);
     if (view === local) view = null;
   };
 }

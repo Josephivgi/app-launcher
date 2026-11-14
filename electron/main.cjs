@@ -204,6 +204,8 @@ function createWindow() {
   mainWindow.on("closed", () => (mainWindow = null));
 }
 
+const smokeAnswers = { discard: false };
+
 async function confirm(message, detail, okLabel) {
   const win = BrowserWindow.getFocusedWindow() || mainWindow;
   const res = await dialog.showMessageBox(win, { type: "warning", buttons: [okLabel, "Cancel"], defaultId: 1, cancelId: 1, message, detail, noLink: true });
@@ -259,8 +261,16 @@ function registerIpc() {
     const res = await dialog.showOpenDialog(mainWindow, { title: "Choose an icon", properties: ["openFile"], filters: [{ name: "Images or programs", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg", "ico", "bmp", "exe", "lnk"] }] });
     return res.canceled ? "" : res.filePaths[0];
   });
-  handle("apps-pick-folder", async () => {
-    const res = await dialog.showOpenDialog(mainWindow, { title: "Choose the folder the command runs in", properties: ["openDirectory"] });
+  // The page's own confirm() can leave text boxes unable to take typing on
+  // Windows, so the discard question uses the same dialog as Remove.
+  // The smoke run answers it itself instead of showing a window.
+  handle("confirm-discard", async () => {
+    if (process.env.APP_LAUNCHER_SMOKE) return smokeAnswers.discard;
+    return confirm("Discard what you typed in this form?", "Nothing you typed here is saved yet.", "Discard");
+  });
+  handle("apps-pick-folder", async (forApp) => {
+    const title = forApp ? "Choose the folder the program starts in" : "Choose the folder the command runs in";
+    const res = await dialog.showOpenDialog(mainWindow, { title, properties: ["openDirectory"] });
     return res.canceled ? "" : res.filePaths[0];
   });
   handle("apps-add", async (body) => {
@@ -274,7 +284,15 @@ function registerIpc() {
     return updated;
   });
   handle("apps-remove", async (id) => {
-    const found = apps.get(String(id));
+    let found;
+    try {
+      found = apps.get(String(id));
+    } catch (error) {
+      // Already removed (an agent may have done it while the window was in the background).
+      if (!/^No app named/.test(String(error && error.message))) throw error;
+      broadcast("apps-changed");
+      return true;
+    }
     const ok = await confirm('Remove "' + found.name + '" from App Launcher?', "The program itself is not uninstalled.", "Remove");
     if (!ok) return false;
     apps.remove(found.id);
@@ -346,7 +364,7 @@ app.whenReady().then(async () => {
   syncConnections();
   if (process.env.APP_LAUNCHER_SMOKE) {
     const { runSmoke } = require("./smoke.cjs");
-    const result = await runSmoke({ apps, db, dataRoot: DATA_ROOT, appRoot: APP_ROOT, shellUrl: SHELL_URL, preload: PRELOAD });
+    const result = await runSmoke({ apps, db, dataRoot: DATA_ROOT, appRoot: APP_ROOT, shellUrl: SHELL_URL, preload: PRELOAD, smokeAnswers });
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
     process.exitCode = result.ok ? 0 : 1;
     return app.quit();

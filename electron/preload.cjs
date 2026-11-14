@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("shell", {
   appInfo: invoke("app-info"),
   setTheme: invoke("set-theme"),
   openExternal: invoke("open-external"),
+  confirmDiscard: invoke("confirm-discard"),
   apps: {
     list: invoke("apps-list"),
     add: invoke("apps-add"),

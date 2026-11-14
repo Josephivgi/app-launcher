@@ -6,14 +6,20 @@ The `app_*` tools work whether or not the App Launcher window is open. When it i
 
 ## An app record
 
-| Field | Meaning |
-|---|---|
-| `id` | lowercase letters, digits, dashes. Defaults to a slug of `name`. |
-| `name`, `description` | shown on the app's card |
-| `exe` | full path of the program to launch (required) |
-| `args`, `cwd` | optional launch arguments and working folder |
-| `repo` | GitHub `owner/name` for the version check, or empty |
-| `versionSource` | where the installed version is read from (below) |
+| Field | Kinds | Meaning |
+|---|---|---|
+| `kind` | all | `app` (default), `website` or `command`. Passing `url` without `exe` means website; `command` without `exe` means command. |
+| `id` | all | lowercase letters, digits, dashes. Defaults to a slug of `name`. |
+| `name` | all | shown on the card (required) |
+| `description` | all | one short line, shown under the name on the card. Write what it does for the person, e.g. "Records the screen with game sound". |
+| `section` | all | `mine` (default) for apps the person made, `external` for apps made by others (T3 Code, Orca, Herdr). The grid shows them as "My apps" and "External". |
+| `icon` | all | see Icons below |
+| `exe` | app | full path of the program to launch (required for apps) |
+| `args`, `cwd` | app | optional launch arguments (an array of strings keeps each one exact) and working folder (empty means the exe folder). Arguments are passed only to `.exe` and `.com` programs; `.bat`, `.cmd` and `.lnk` files open without them (use a command entry instead). |
+| `repo` | app | GitHub `owner/name` for the version check, or empty |
+| `versionSource` | app | where the installed version is read from (below) |
+
+Example: `{"name":"Simple Recorder","exe":"C:\\Users\\me\\AppData\\Local\\Programs\\Simple Recorder\\Simple Recorder.exe","repo":"me/simple-recorder","versionSource":{"type":"exe"},"description":"Records the screen with game sound","section":"mine"}`
 
 ## Icons
 
@@ -57,7 +63,7 @@ A website entry has `kind: "website"`, `name`, `url`, and optionally `descriptio
 
 ## Version checks
 
-`app_check` reads the installed version, asks GitHub for the repo's newest release (falling back to the newest version tag), and compares. Status is one of `current`, `update`, `ahead`, `unknown`, `error`, `no-repo`. Only public repos are readable. Unauthenticated GitHub allows about 60 requests an hour, so do not loop checks.
+`app_check` reads the installed version, asks GitHub for the repo's newest release (falling back to the newest version tag), and compares. Status is one of `current`, `update`, `ahead`, `unknown`, `error`, `no-repo`. Websites and commands have no version: their status is `website` or `command`. Only public repos are readable. Unauthenticated GitHub allows about 60 requests an hour, so do not loop checks.
 
 `versionSource` types:
 

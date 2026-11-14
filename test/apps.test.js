@@ -119,3 +119,14 @@ test("importIcon stores real images, keeps exe paths, and rejects non-images", a
   assert.equal(iconFile(root, "../app-launcher.db"), "");
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+test("websiteUrl treats host:port as a host, not a scheme", () => {
+  assert.equal(websiteUrl("localhost:4310"), "http://localhost:4310/");
+  assert.equal(websiteUrl("127.0.0.1:8080?x=1"), "http://127.0.0.1:8080/?x=1");
+  assert.equal(websiteUrl("[::1]:5000#a"), "http://[::1]:5000/#a");
+  assert.equal(websiteUrl("example.com:3000/x"), "https://example.com:3000/x");
+  assert.equal(websiteUrl("https://localhost:4310"), "https://localhost:4310/");
+  assert.equal(websiteUrl("0.0.0.0:3000"), "http://0.0.0.0:3000/");
+  assert.throws(() => websiteUrl("tel:12345"), /https:\/\/ or http:\/\//);
+  assert.throws(() => websiteUrl("javascript:alert(1)"));
+});

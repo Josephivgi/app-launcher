@@ -26,8 +26,8 @@ function clock(iso) {
 function updatesMarkup() {
   const u = state.update;
   if (!u) return "";
-  const button = (act, label, cls, disabled) => '<button class="btn sm ' + cls + '" data-upd="' + act + '"' + (disabled ? " disabled" : "") + ">" + label + "</button>";
-  const checkNow = button("check", "Check now", "ghost", u.status === "checking");
+  const button = (act, label, cls, disabled, title) => '<button class="btn sm ' + cls + '" data-upd="' + act + '"' + (title ? ' title="' + title + '"' : "") + (disabled ? " disabled" : "") + ">" + label + "</button>";
+  const checkNow = button("check", "Check now", "ghost", u.status === "checking", "Check for a newer version of App Launcher itself");
   const checked = u.checkedAt ? "Last checked at " + clock(u.checkedAt) + ". Checks again every hour." : "Checks every hour.";
   const v = "v" + esc(u.version);
   if (u.status === "downloading") return '<span class="upd-text">Downloading v' + esc(u.latest) + "…</span>";
@@ -36,11 +36,11 @@ function updatesMarkup() {
     return '<span class="upd-problem" title="' + esc(u.error + "\n" + checked) + '">' + icon("alert") + "Update check failed</span>" + checkNow;
   }
   if (u.status === "update") {
-    const text = u.packaged ? "v" + esc(u.latest) + " is available" : "v" + esc(u.latest) + " is out. Run the beta installer to update.";
+    const text = u.packaged ? "App Launcher v" + esc(u.latest) + " is available" : "App Launcher v" + esc(u.latest) + " is out. Run the beta installer to update.";
     const act = u.packaged ? button("install", "Update now", "primary") : button("notes", "Release notes", "secondary");
     return '<span class="upd-text" title="' + esc("You have " + v + ". " + checked) + '">' + text + "</span>" + act + checkNow;
   }
-  const text = u.status === "checking" ? v + ", checking for updates…" : u.status === "current" ? v + ", up to date" : v;
+  const text = "App Launcher " + (u.status === "checking" ? v + ", checking…" : u.status === "current" ? v + ", up to date" : v);
   return '<span class="upd-text" title="' + esc(checked) + '">' + text + "</span>" + checkNow;
 }
 
